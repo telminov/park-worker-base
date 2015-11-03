@@ -64,7 +64,7 @@ class BaseMonitWorker(multiprocessing.Process):
 
                 result = monit.check(
                     host=host_address,
-                    options=task_options,
+                    **task_options
                 )
 
                 self._register_complete_task(task, result)
@@ -104,7 +104,6 @@ class BaseMonitWorker(multiprocessing.Process):
 
     def _register_start_task(self, task):
         self._add_current_task(task)
-
         task['start_dt'] = now()
         task['worker'] = self._get_worker()
         self.emit_event(MONIT_TASK_EVENT, json.dumps(task, default=json_default))
