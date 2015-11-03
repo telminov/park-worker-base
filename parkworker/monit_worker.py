@@ -17,9 +17,11 @@ class BaseMonitWorker(multiprocessing.Process):
     created_dt = None
     host_name = None
     tasks = None
+    monit_scheduler_port = None
 
     ZMQ_SERVER_ADDRESS = None
-    ZMQ_MONIT_SCHEDULER_PORT = None
+    ZMQ_WORKER_REGISTRATOR_PORT = None
+    worker_type = None
 
     def emit_event(self, *args, **kwargs):
         raise NotImplemented()
@@ -35,8 +37,7 @@ class BaseMonitWorker(multiprocessing.Process):
         self.host_name = socket.gethostname()
         self.tasks = dict()
 
-        monit_names = [n for n, _ in Monit.get_all_monits()]
-        self._emit_worker({'monit_names': monit_names})
+        self.register_worker()
 
     def run(self):
         task_socket = self.get_task_socket()
@@ -76,8 +77,30 @@ class BaseMonitWorker(multiprocessing.Process):
     def get_task_socket(self):
         context = zmq.Context()
         task_socket = context.socket(zmq.PULL)
-        task_socket.connect("tcp://%s:%s" % (self.ZMQ_SERVER_ADDRESS, self.ZMQ_MONIT_SCHEDULER_PORT))
+        task_socket.connect("tcp://%s:%s" % (self.ZMQ_SERVER_ADDRESS, self.monit_scheduler_port))
+        print('MonitWorker connect to', self.ZMQ_SERVER_ADDRESS, self.monit_scheduler_port)
         return task_socket
+
+    def register_worker(self):
+        context = zmq.Context()
+        register_socket = context.socket(zmq.REQ)
+        register_socket.connect("tcp://%s:%s" % (self.ZMQ_SERVER_ADDRESS, self.ZMQ_WORKER_REGISTRATOR_PORT))
+        try:
+            monit_names = [n for n, _ in Monit.get_all_monits()]
+            register_data = {
+                'main': self._get_worker(),
+                'heart_beat_dt': now(),
+                'monit_names': monit_names,
+            }
+            register_data_json = json.dumps(register_data, default=json_default)
+            register_socket.send_string(register_data_json)
+            # print('register_worker send', register_data_json)
+            keeper_answer = register_socket.recv_string()
+            # print('register_worker got', keeper_answer)
+            answer_data = json.loads(keeper_answer)
+            self.monit_scheduler_port = answer_data['monit_scheduler_port']
+        finally:
+            register_socket.close()
 
     def _register_start_task(self, task):
         self._add_current_task(task)
@@ -107,6 +130,7 @@ class BaseMonitWorker(multiprocessing.Process):
             'uuid': self.uuid,
             'created_dt': self.created_dt,
             'host_name': self.host_name,
+            'type': self.worker_type,
         }
 
     def _emit_worker(self, data=None):
