@@ -55,7 +55,8 @@ class Monit(object):
                 for module_item in monit_module.__dict__.values():
                     if type(module_item) is type \
                             and issubclass(module_item, Monit) \
-                            and module_item is not Monit:
+                            and module_item is not Monit\
+                            and hasattr(module_item, 'name') and module_item.name:
                         monits.setdefault(module_item.name, []).append(module_item)
 
             # check no duplicated names

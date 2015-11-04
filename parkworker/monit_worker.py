@@ -37,51 +37,56 @@ class BaseMonitWorker(multiprocessing.Process):
         self.host_name = socket.gethostname()
         self.tasks = dict()
 
-        self.register_worker()
+        self._register_worker()
 
     def run(self):
-        task_socket = self.get_task_socket()
+        print('Worker start %s' % self.id)
 
         heart_beat_process = multiprocessing.Process(target=self._heart_beat)
         heart_beat_process.daemon = True
         heart_beat_process.start()
 
-        print('Worker start %s' % self.id)
+        self._process_tasks()
 
+    def _process_tasks(self):
+        task_socket = self._get_task_socket()
         try:
             while True:
-                task_json = task_socket.recv_json()
-                task = json.loads(task_json)
-                monit_name = task['monit_name']
-                host_address = task['host_address']
-                task_options = task['options']
+                self.current_task_json = task_socket.recv_json()
 
-                print("Worker %s. Received request: %s for %s" % (self.id, monit_name, host_address))
-
-                monit = Monit.get_monit(monit_name)()
-
-                self._register_start_task(task)
-
-                result = monit.check(
-                    host=host_address,
-                    **task_options
+                self._before_check()
+                self.current_result = self.current_monit.check(
+                    host=self.current_host_address,
+                    **self.current_task_options
                 )
-
-                self._register_complete_task(task, result)
-
-                # get new monitoring results
-                self.emit_event(MONIT_STATUS_EVENT, json.dumps(task, default=json_default))
+                self._after_check()
         finally:
             self._emit_worker({'stop_dt': now()})
+            task_socket.close()
 
-    def get_task_socket(self):
+    def _heart_beat(self):
+        while True:
+            self._emit_worker()
+            time.sleep(MONIT_WORKER_HEART_BEAT_PERIOD)
+
+    def _before_check(self):
+        self._parse_task()
+        self._register_start_task(self.current_task)
+        self.current_monit = Monit.get_monit(self.current_monit_name)()
+
+    def _after_check(self):
+        self._register_complete_task(self.current_task, self.current_result)
+        # get new monitoring results
+        self.emit_event(MONIT_STATUS_EVENT, json.dumps(self.current_task, default=json_default))
+
+    def _get_task_socket(self):
         context = zmq.Context()
         task_socket = context.socket(zmq.PULL)
         task_socket.connect("tcp://%s:%s" % (self.ZMQ_SERVER_ADDRESS, self.monit_scheduler_port))
         print('MonitWorker connect to', self.ZMQ_SERVER_ADDRESS, self.monit_scheduler_port)
         return task_socket
 
-    def register_worker(self):
+    def _register_worker(self):
         context = zmq.Context()
         register_socket = context.socket(zmq.REQ)
         register_socket.connect("tcp://%s:%s" % (self.ZMQ_SERVER_ADDRESS, self.ZMQ_WORKER_REGISTRATOR_PORT))
@@ -144,13 +149,15 @@ class BaseMonitWorker(multiprocessing.Process):
         worker_data_json = json.dumps(worker_data, default=json_default)
         self.emit_event(MONIT_WORKER_EVENT, worker_data_json)
 
-    def _heart_beat(self):
-        while True:
-            self._emit_worker()
-            time.sleep(MONIT_WORKER_HEART_BEAT_PERIOD)
-
     @staticmethod
     def _get_task_id(task):
         return task['_id']['$oid']
 
+    def _parse_task(self):
+        task = json.loads(self.current_task_json)
+        self.current_task = task
+        self.current_monit_name = task['monit_name']
+        self.current_host_address = task['host_address']
+        self.current_task_options = task['options']
 
+        print("Worker %s. Received request: %s for %s" % (self.id, self.current_monit_name, self.current_host_address))
