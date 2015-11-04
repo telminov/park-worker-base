@@ -52,14 +52,15 @@ class BaseMonitWorker(multiprocessing.Process):
         task_socket = self._get_task_socket()
         try:
             while True:
-                self.current_task_json = task_socket.recv_json()
+                task = task_socket.recv_json()
+                self._register_start_task(task)
 
-                self._before_check()
-                self.current_result = self.current_monit.check(
-                    host=self.current_host_address,
-                    **self.current_task_options
+                monit = Monit.get_monit(task['monit_name'])()
+                result = monit.check(
+                    host=task['host_address'],
+                    **task['options']
                 )
-                self._after_check()
+                self._after_check(task, result)
         finally:
             self._emit_worker({'stop_dt': now()})
             task_socket.close()
@@ -69,15 +70,10 @@ class BaseMonitWorker(multiprocessing.Process):
             self._emit_worker()
             time.sleep(MONIT_WORKER_HEART_BEAT_PERIOD)
 
-    def _before_check(self):
-        self._parse_task()
-        self._register_start_task(self.current_task)
-        self.current_monit = Monit.get_monit(self.current_monit_name)()
-
-    def _after_check(self):
-        self._register_complete_task(self.current_task, self.current_result)
+    def _after_check(self, task, result):
+        self._register_complete_task(task, result)
         # get new monitoring results
-        self.emit_event(MONIT_STATUS_EVENT, json.dumps(self.current_task, default=json_default))
+        self.emit_event(MONIT_STATUS_EVENT, json.dumps(task, default=json_default))
 
     def _get_task_socket(self):
         context = zmq.Context()
@@ -108,6 +104,7 @@ class BaseMonitWorker(multiprocessing.Process):
             register_socket.close()
 
     def _register_start_task(self, task):
+        print("Worker %s. Received request: %s for %s. %s" % (self.id, task['monit_name'], task['host_address'], now()))
         self._add_current_task(task)
         task['start_dt'] = now()
         task['worker'] = self._get_worker()
@@ -153,11 +150,3 @@ class BaseMonitWorker(multiprocessing.Process):
     def _get_task_id(task):
         return task['_id']['$oid']
 
-    def _parse_task(self):
-        task = json.loads(self.current_task_json)
-        self.current_task = task
-        self.current_monit_name = task['monit_name']
-        self.current_host_address = task['host_address']
-        self.current_task_options = task['options']
-
-        print("Worker %s. Received request: %s for %s" % (self.id, self.current_monit_name, self.current_host_address))
