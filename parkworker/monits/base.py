@@ -10,14 +10,14 @@ class DuplicatedMonitNameException(Exception):
 
 
 class CheckResult(object):
-    def __init__(self, is_success, dt=None, extra=None):
-        self.is_success = is_success
+    def __init__(self, level, dt=None, extra=None):
+        self.level = level
         self.extra = extra
         self.dt = dt or now()
 
     def get_dict(self):
         return {
-            'is_success': self.is_success,
+            'level': self.level,
             'extra': self.extra,
             'dt': self.dt,
         }
