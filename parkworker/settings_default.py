@@ -1,6 +1,6 @@
 # must be agreed with parkkeeper
 SECRET_KEY = '123'
 
-ZMQ_SERVER_ADDRESS = 'localhost'
+ZMQ_SERVER_ADDRESS = 'parkkeeper'
 ZMQ_WORKER_REGISTRATOR_PORT = 5548
 ZMQ_EVENT_RECEIVER_PORT = 5549
