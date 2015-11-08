@@ -60,7 +60,7 @@ class BaseMonitWorker(multiprocessing.Process):
                     raise Exception('Unknown monit name "%s"' % task['monit_name'])
 
                 monit = monit_class()
-                result = monit.check(
+                result = monit.start(
                     host=task['host_address'],
                     **task['options']
                 )

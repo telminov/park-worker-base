@@ -1,7 +1,9 @@
 # coding: utf-8
 import os
 import sys
+import traceback
 
+from parkworker.const import LEVEL_FAIL
 from parkworker.utils import now
 
 
@@ -26,6 +28,13 @@ class CheckResult(object):
 class Monit(object):
     name = None
     description = None
+
+    def start(self, host, **kwargs):
+        try:
+            result = self.check(host, **kwargs)
+        except Exception as ex:
+            result = self._get_exp_result(ex)
+        return result
 
     def check(self, host, **kwargs):
         raise NotImplemented()
@@ -71,4 +80,16 @@ class Monit(object):
             cls._monits = tuple([(monit_name, monit_modules[0]) for monit_name, monit_modules in monits.items()])
 
         return cls._monits
+
+    @staticmethod
+    def _get_exp_result(ex):
+        result = CheckResult(
+            level=LEVEL_FAIL,
+            extra={
+                'description': str(ex),
+                'exception_type': str(type(ex)),
+                'stack_trace':  traceback.format_exc(),
+            }
+        )
+        return result
 
