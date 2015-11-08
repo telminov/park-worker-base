@@ -91,11 +91,11 @@ class BaseMonitWorker(multiprocessing.Process):
         register_socket = context.socket(zmq.REQ)
         register_socket.connect("tcp://%s:%s" % (self.ZMQ_SERVER_ADDRESS, self.ZMQ_WORKER_REGISTRATOR_PORT))
         try:
-            monit_names = [n for n, _ in Monit.get_all_monits()]
+            monits = {name: monit_class.description for name, monit_class in Monit.get_all_monits()}
             register_data = {
                 'main': self._get_worker(),
                 'heart_beat_dt': now(),
-                'monit_names': monit_names,
+                'monits': monits,
             }
             register_data_json = json.dumps(register_data, default=json_default)
             register_socket.send_string(register_data_json)
