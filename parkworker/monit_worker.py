@@ -55,7 +55,11 @@ class BaseMonitWorker(multiprocessing.Process):
                 task = task_socket.recv_json()
                 self._register_start_task(task)
 
-                monit = Monit.get_monit(task['monit_name'])()
+                monit_class = Monit.get_monit(task['monit_name'])
+                if not monit_class:
+                    raise Exception('Unknown monit name "%s"' % task['monit_name'])
+
+                monit = monit_class()
                 result = monit.check(
                     host=task['host_address'],
                     **task['options']
