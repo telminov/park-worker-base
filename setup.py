@@ -1,19 +1,24 @@
 # coding: utf-8
 # python setup.py sdist register upload
-from distutils.core import setup
+from setuptools import setup
 
 setup(
     name='park-worker-base',
-    version='0.0.6',
+    version='0.1.0',
     description='Base logic of workers for park-keeper project.',
     author='Telminov Sergey',
     url='https://github.com/telminov/park-worker-base',
     packages=[
         'parkworker',
-        'parkworker/monits',
+        'parkworker/asyncio',
     ],
     license='The MIT License',
+    # test_suite='parkworker.tests',
+    test_suite='runtests.runtests',
     install_requires=[
-        'pytz',
+        'pytz', 'zmq', 'mongoengine==0.10.0'
     ],
+    tests_require=[
+        'django-park-keeper', 'factory_boy',
+    ]
 )
