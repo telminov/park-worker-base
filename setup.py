@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='park-worker-base',
-    version='0.1.0',
+    version='0.1.1',
     description='Base logic of workers for park-keeper project.',
     author='Telminov Sergey',
     url='https://github.com/telminov/park-worker-base',
@@ -16,7 +16,7 @@ setup(
     # test_suite='parkworker.tests',
     test_suite='runtests.runtests',
     install_requires=[
-        'pytz', 'zmq', 'mongoengine==0.10.0'
+        'pytz', 'pyzmq', 'mongoengine==0.10.0'
     ],
     tests_require=[
         'django-park-keeper', 'factory_boy',
