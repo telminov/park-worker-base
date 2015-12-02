@@ -10,7 +10,7 @@ import zmq
 from bson import json_util
 
 from parkworker.const import WORKER_HEART_BEAT_PERIOD, MONIT_STATUS_EVENT, \
-    WORKER_EVENT, TASK_EVENT, TASK_TYPE_MONIT, TASK_TYPE_WORK, STOP_WORKER_MSG
+    WORKER_EVENT, TASK_EVENT, TASK_TYPE_MONIT, TASK_TYPE_WORK, STOP_WORKER_MSG, WORK_STATUS_EVENT
 from parkworker.utils import now
 from parkworker.task_processor import TaskProcessor, UnknownTaskTypeException
 from parkworker.monit import Monit
@@ -143,6 +143,8 @@ class BaseWorker(multiprocessing.Process):
     def _register_complete_task(self, task_data, task_type):
         if task_type == TASK_TYPE_MONIT:
             self.emit_event(MONIT_STATUS_EVENT, json.dumps(task_data, default=json_util.default))
+        if task_type == TASK_TYPE_WORK:
+            self.emit_event(WORK_STATUS_EVENT, json.dumps(task_data, default=json_util.default))
         self._emit_task(task_data, task_type)
         self._emit_worker({'complete_task': task_data})
 
