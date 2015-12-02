@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='park-worker-base',
-    version='0.1.1',
+    version='0.1.2',
     description='Base logic of workers for park-keeper project.',
     author='Telminov Sergey',
     url='https://github.com/telminov/park-worker-base',
