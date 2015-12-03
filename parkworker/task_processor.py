@@ -1,10 +1,12 @@
 # coding: utf-8
+import json
 import sys
 
 import os
 import traceback
 
-from parkworker.const import LEVEL_FAIL, TASK_TYPE_MONIT, TASK_TYPE_WORK
+from bson import json_util
+from parkworker.const import LEVEL_OK, LEVEL_FAIL, TASK_TYPE_MONIT, TASK_TYPE_WORK
 from parkworker.utils import now
 
 
@@ -21,8 +23,8 @@ class UnknownTaskNameException(Exception):
 
 
 class TaskResult(object):
-    def __init__(self, level, dt=None, extra=None):
-        self.level = level
+    def __init__(self, level=None, dt=None, extra=None):
+        self.level = level or LEVEL_OK
         self.extra = extra
         self.dt = dt or now()
 
@@ -32,6 +34,9 @@ class TaskResult(object):
             'extra': self.extra,
             'dt': self.dt,
         }
+
+    def get_json(self):
+        return json.dumps(self.get_dict(), indent=2, default=json_util.default)
 
 
 class TaskProcessor(object):
